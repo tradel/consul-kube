@@ -1,0 +1,15 @@
+# OpenSSL cruft
+*.pem
+*.crt
+*.key
+*.csr
+*.json
+ssl.conf
+
+.idea/
+_attic/
+**/__pycache__/
+*.egg-info/
+build/
+dist/
+
