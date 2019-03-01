@@ -20,3 +20,7 @@ Manual Release Process
  
         $ twine upload -s -i <GPG_IDENTITY> -u <PYPI_USERNAME> --repository-url https://test.pypi.org/legacy/ dist/* 
 
+ 5. Push changes to Github, including the semver tag:
+ 
+        $ git push --tags
+``
