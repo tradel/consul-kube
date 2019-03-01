@@ -29,11 +29,12 @@ def main(ctx: click.Context, debug: bool, save_certs: bool, context_name: str) -
 @click.pass_context
 def validate(ctx: click.Context, namespace: str) -> None:
     """Checks the certificates for every injected pod."""
-    validate_command(namespace)
+    ctx.obj['namespace'] = namespace
+    validate_command(ctx)
 
 
 @main.command()
 @click.pass_context
 def rotate(ctx: click.Context) -> None:
     """Forces the Consul Connect CA to rotate its root certificate."""
-    rotate_command()
+    rotate_command(ctx)

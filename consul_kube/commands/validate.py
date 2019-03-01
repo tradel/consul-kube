@@ -2,8 +2,9 @@ import re
 from datetime import datetime
 from typing import Tuple, List, Optional
 
+import click
 from OpenSSL import crypto
-from jsonpath_ng import parse
+from jsonpath_ng.ext import parse
 
 from consul_kube.lib.color import debug, error, color_assert, section, groovy
 from consul_kube.lib.envoy import EnvoyListenerConfig, EnvoyClusterConfig, EnvoyConfig
@@ -208,8 +209,8 @@ def validate_downstream_config(downstream: EnvoyListenerConfig, upstream_name: s
                         "Downstream port number in Envoy listener config does not match pod annotation")
 
 
-def validate_command(namespace: str) -> None:
-    ctx.obj['namespace'] = namespace
+def validate_command(ctx: click.Context) -> None:
+    namespace = ctx.obj['namespace']
     debug(f'Will use namespace "{namespace}" in Kubernetes')
 
     openssl = SSLProxyContainer(namespace=namespace)
