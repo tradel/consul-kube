@@ -22,12 +22,12 @@ Manual Release Process
               dist/consul-kube-$(python setup.py --version).tar.gz \
               dist/consul_kube-$(python setup.py --version)-*.whl
  
- 5. Push changes to Github, including the semver tag:
+ 5. Test.
+ 
+ 6. Push changes to Github, including the semver tag:
  
         $ git push --tags
 
- 6. Test.
- 
  7. Update to the real PyPI index:
   
         $ twine upload -u $PYPI_USERNAME --repository-url https://pypi.org/legacy/ \

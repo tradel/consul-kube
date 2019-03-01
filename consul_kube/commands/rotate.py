@@ -1,12 +1,9 @@
-import click
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 
 from OpenSSL import crypto
 
-from consul_kube.commands import main
 from consul_kube.lib.color import debug, info, color_assert
 from consul_kube.lib.x509 import compare_certs, save_cert, save_key
 from consul_kube.lib.kube import ConsulApiClient
@@ -44,11 +41,7 @@ def generate_ca_root(serial_number: int, trust_domain: str, public_key: crypto.P
     return cert
 
 
-@main.command()
-@click.pass_context
-def rotate(ctx: click.Context) -> None:
-    """Forces the Consul Connect CA to rotate its root certificate."""
-
+def rotate_command() -> None:
     debug('Looking up existing CA serial number')
     cc = ConsulApiClient()
     root_cert, api_response = cc.active_ca_root_cert

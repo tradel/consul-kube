@@ -2,6 +2,8 @@ import click
 
 from consul_kube import __version__
 from consul_kube.lib import color
+from consul_kube.commands.rotate import rotate_command
+from consul_kube.commands.validate import validate_command
 
 
 @click.group()
@@ -20,3 +22,18 @@ def main(ctx: click.Context, debug: bool, save_certs: bool, context_name: str) -
     ctx.obj['save_certs'] = save_certs
     color.debug_mode = debug
     color.write_certs = save_certs
+
+
+@main.command()
+@click.option('-namespace', default='default', help='Kubernetes namespace where we can find Consul.')
+@click.pass_context
+def validate(ctx: click.Context, namespace: str) -> None:
+    """Checks the certificates for every injected pod."""
+    validate_command(namespace)
+
+
+@main.command()
+@click.pass_context
+def rotate(ctx: click.Context) -> None:
+    """Forces the Consul Connect CA to rotate its root certificate."""
+    rotate_command()

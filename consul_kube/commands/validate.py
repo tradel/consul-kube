@@ -2,11 +2,9 @@ import re
 from datetime import datetime
 from typing import Tuple, List, Optional
 
-import click
 from OpenSSL import crypto
 from jsonpath_ng import parse
 
-from consul_kube.commands import main
 from consul_kube.lib.color import debug, error, color_assert, section, groovy
 from consul_kube.lib.envoy import EnvoyListenerConfig, EnvoyClusterConfig, EnvoyConfig
 from consul_kube.lib.kube import ConsulApiClient, KubePod, SSLProxyContainer
@@ -196,6 +194,8 @@ def validate_upstream_chain(upstream: EnvoyClusterConfig,
     return color_assert(msg is None,
                         f'Unable to validate cert for upstream {upstream.name}: {msg}',
                         f'Certificate configured for upstream {upstream.name} is valid') and \
+           color_assert(cert_in_list(root_ca, *upstream.root_certs),
+                        'None of the configured root CA certs match') and \
            color_assert(compare_certs(active_cert, leaf_cert),
                         f"Envoy client cert for {upstream.name} does not match leaf cert")
 
@@ -208,11 +208,7 @@ def validate_downstream_config(downstream: EnvoyListenerConfig, upstream_name: s
                         "Downstream port number in Envoy listener config does not match pod annotation")
 
 
-@main.command()
-@click.option('-namespace', default='default', help='Kubernetes namespace where we can find Consul.')
-@click.pass_context
-def validate(ctx: click.Context, namespace: str) -> None:
-    """Checks the certificates for every injected pod."""
+def validate_command(namespace: str) -> None:
     ctx.obj['namespace'] = namespace
     debug(f'Will use namespace "{namespace}" in Kubernetes')
 

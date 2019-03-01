@@ -4,7 +4,7 @@ setup(
     use_scm_version=True,
     entry_points={
         'console_scripts': [
-            'consul-kube=main:script_entry'
+            'consul-kube=consul_kube.commands:main'
         ]
     },
     python_requires='~=3.4',

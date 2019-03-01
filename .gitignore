@@ -19,4 +19,5 @@ dist/
 .eggs/
 venv/
 virtualenvwrapper/
+pip-wheel-metadata/
 
