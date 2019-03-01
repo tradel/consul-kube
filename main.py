@@ -5,5 +5,9 @@ from consul_kube.commands.validate import validate  # noqa: F401, pylint: disabl
 from consul_kube.commands.rotate import rotate  # noqa: F401, pylint: disable=W0611
 
 
-if __name__ == '__main__':
+def script_entry():
     main(obj={})  # pylint: disable=E1120,E1123
+
+
+if __name__ == '__main__':
+    script_entry()

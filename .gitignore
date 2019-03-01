@@ -16,4 +16,7 @@ _attic/
 *.egg-info/
 build/
 dist/
+.eggs/
+venv/
+virtualenvwrapper/
 
