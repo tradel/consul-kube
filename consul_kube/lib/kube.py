@@ -1,10 +1,11 @@
-import datetime
 import json
 import time
-
-from typing import Tuple, List, Dict, Optional
+from datetime import datetime
 from io import StringIO
+from typing import Tuple, List, Dict, Optional
 
+from OpenSSL import crypto
+from jsonpath_ng.ext import parse
 from kubernetes import client, config
 from kubernetes.client.models import V1Node, V1Pod, ExtensionsV1beta1Deployment, ExtensionsV1beta1DeploymentSpec, \
     V1DeleteOptions, V1Container, V1ObjectMeta, V1PodSpec, V1PodTemplateSpec
@@ -12,15 +13,12 @@ from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 from kubernetes.stream.ws_client import WSClient
 from urllib3.response import HTTPResponse
-from jsonpath_ng.ext import parse
 
-from OpenSSL import crypto
-
+from consul_kube.lib import JSONNode
+from consul_kube.lib.color import debug, error
+from consul_kube.lib.tar import TarInMemory
 from consul_kube.lib.x509 import load_certs, cert_from_pem, cert_to_pem, pkey_from_pem, pkey_to_pem, \
     extract_cert, cert_digest
-from consul_kube.lib.tar import TarInMemory
-from consul_kube.lib.color import debug, error
-from consul_kube.lib import JSONNode
 
 config.load_kube_config()
 kube = client.CoreV1Api()
