@@ -1,6 +1,8 @@
 consul-kube
 ===========
 
+[![Build status](https://travis-ci.org/tradel/consul-kube.svg?master)](https://travis-ci.org/tradel)
+
 This is a utility that performs a few useful functions against Consul running in Kubernetes. 
 
 
