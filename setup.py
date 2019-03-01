@@ -4,7 +4,7 @@ setup(
     use_scm_version=True,
     entry_points='''
         [console_scripts]
-        consul-kube = commands:main
+        consul-kube = consul_kube.commands:main
     ''',
     python_requires='~=3.4',
     install_requires=['kubernetes', 'urllib3', 'click', 'cryptography', 'pyOpenSSL'],
