@@ -2,17 +2,25 @@ import datetime
 import json
 import time
 
+from typing import Tuple, List, Dict, Optional
+from io import StringIO
+
 from kubernetes import client, config
-from kubernetes.client.models import *
+from kubernetes.client.models import V1Node, V1Pod, ExtensionsV1beta1Deployment, ExtensionsV1beta1DeploymentSpec, \
+    V1DeleteOptions, V1Container, V1ObjectMeta, V1PodSpec, V1PodTemplateSpec
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 from kubernetes.stream.ws_client import WSClient
 from urllib3.response import HTTPResponse
 from jsonpath_ng.ext import parse
 
-from consul_kube.lib.x509 import *
+from OpenSSL import crypto
+
+from consul_kube.lib.x509 import load_certs, cert_from_pem, cert_to_pem, pkey_from_pem, pkey_to_pem, \
+    extract_cert, cert_digest
 from consul_kube.lib.tar import TarInMemory
-from consul_kube.lib import *
+from consul_kube.lib.color import debug, error
+from consul_kube.lib import JSONNode
 
 config.load_kube_config()
 kube = client.CoreV1Api()
@@ -60,7 +68,7 @@ class ConsulApiClient:
                                         )
 
     @property
-    def active_ca_root_cert(self) -> Tuple[X509, dict]:
+    def active_ca_root_cert(self) -> Tuple[crypto.X509, dict]:
         response_json = self.get('/v1/connect/ca/roots')  # type: dict
         active_root_id = response_json['ActiveRootID']
         for root in response_json['Roots']:
@@ -71,14 +79,14 @@ class ConsulApiClient:
 
         raise RuntimeError('Cannot find an active root certificate in the CA')
 
-    def leaf_cert(self, service_name: str) -> Tuple[List[X509], PKey, dict]:
+    def leaf_cert(self, service_name: str) -> Tuple[List[crypto.X509], crypto.PKey, dict]:
         response_json = self.get(f'/v1/agent/connect/ca/leaf/{service_name}')
         return (load_certs(StringIO(response_json['CertPEM'])),
                 pkey_from_pem(response_json['PrivateKeyPEM']),
                 response_json)
 
-    def update_config(self, private_key: PKey, root_ca_cert: X509,
-                      leaf_cert_ttl: str='72h', rotation_period: str='2160h'):
+    def update_config(self, private_key: crypto.PKey, root_ca_cert: crypto.X509,
+                      leaf_cert_ttl: str = '72h', rotation_period: str = '2160h'):
         payload = {
             "Provider": "consul",
             "Config": {
@@ -347,7 +355,7 @@ class SSLProxyContainer:
     def pod(self) -> KubePod:
         return KubePod.select_one("app=openssl")
 
-    def connect(self, host: str, port: int) -> X509:
+    def connect(self, host: str, port: int) -> crypto.X509:
         debug(f'Using OpenSSL proxy container to connect to {host}:{port}')
         command = ['openssl', 's_client',
                    '-tls1_2',
@@ -358,17 +366,17 @@ class SSLProxyContainer:
                    '-connect', f'{host}:{port}']
         debug(f'Executing: ' + ' '.join(command))
         command_out = stream(kube.connect_get_namespaced_pod_exec,
-                        self.pod.name, self.pod.namespace, container='openssl',
-                        tty=False, stdout=True, stderr=True,
-                        command=command)
+                             self.pod.name, self.pod.namespace, container='openssl',
+                             tty=False, stdout=True, stderr=True,
+                             command=command)
 
         certs = extract_cert(command_out)
         assert len(certs) == 1
         return certs[0]
 
-    def update_certs(self, root_ca_cert: X509 = None,
-                     client_cert: X509 = None,
-                     client_key: PKey = None) -> None:
+    def update_certs(self, root_ca_cert: crypto.X509 = None,
+                     client_cert: crypto.X509 = None,
+                     client_key: crypto.PKey = None) -> None:
         debug('Updating certificates in OpenSSL proxy container')
         tar = TarInMemory()
         if root_ca_cert:

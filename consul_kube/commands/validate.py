@@ -1,13 +1,20 @@
-import click
 import re
+from datetime import datetime
+from typing import Tuple, List, Optional
 
-from consul_kube.lib.envoy import *
-from consul_kube.lib.kube import *
+import click
+from OpenSSL import crypto
+from jsonpath_ng import parse
 
 from consul_kube.commands import main
+from consul_kube.lib.color import debug, error, color_assert, section, groovy
+from consul_kube.lib.envoy import EnvoyListenerConfig, EnvoyClusterConfig, EnvoyConfig
+from consul_kube.lib.kube import ConsulApiClient, KubePod, SSLProxyContainer
+from consul_kube.lib.x509 import validate_cert, save_cert, save_key, cert_digest, get_subject_alt_name, \
+    get_subject_cn, cert_in_list, get_valid_times, compare_certs
 
 
-def validate_spiffe(cert: X509, domain: str) -> bool:
+def validate_spiffe(cert: crypto.X509, domain: str) -> bool:
     debug('Validating SPIFFE trust domain')
     alt_name = get_subject_alt_name(cert)
     debug(f'Subject alt name of cert is {alt_name}')
@@ -20,13 +27,13 @@ def validate_spiffe(cert: X509, domain: str) -> bool:
                         'SPIFFE URL in root certificate matches CA trust domain')
 
 
-def validate_ca_root(cert: X509) -> bool:
+def validate_ca_root(cert: crypto.X509) -> bool:
     section('Validating CA root certificate')
     msg = validate_cert(cert, cert)
     return color_assert(msg is None, f'CA root validation failed: {msg}', 'CA root validation succeeded')
 
 
-def get_ca_root(namespace: str) -> Tuple[X509, str]:
+def get_ca_root(namespace: str) -> Tuple[crypto.X509, str]:
     debug('Getting CA root certificate from Consul server')
     cc = ConsulApiClient(namespace=namespace)
     ca_root_cert, api_result = cc.active_ca_root_cert
@@ -55,7 +62,7 @@ def get_injector_default(namespace: str) -> str:
     return default
 
 
-def print_fingerprints(name: str, certs: List[X509]) -> None:
+def print_fingerprints(name: str, certs: List[crypto.X509]) -> None:
     if len(certs) == 0:
         debug(f'{name} has no certificates')
     elif len(certs) == 1:
@@ -66,11 +73,11 @@ def print_fingerprints(name: str, certs: List[X509]) -> None:
             debug(f'    {cert_digest(cert)}')
 
 
-def find_matching_cert(key: PKey, *args: X509) -> Optional[X509]:
+def find_matching_cert(key: crypto.PKey, *args: crypto.X509) -> Optional[crypto.X509]:
     for cert in args:
         data = 'Jeremiah was a bullfrog'
-        foo = sign(key, data, 'sha256')
-        bar = verify(cert, foo, data, 'sha256')
+        foo = crypto.sign(key, data, 'sha256')
+        bar = crypto.verify(cert, foo, data, 'sha256')
         if bar is None:
             debug(f'Certificate matching private key has fingerprint: {cert_digest(cert)}')
             return cert
@@ -78,7 +85,7 @@ def find_matching_cert(key: PKey, *args: X509) -> Optional[X509]:
         return None
 
 
-def validate_envoy_public_listener(pub: EnvoyListenerConfig, ca_root: X509) -> None:
+def validate_envoy_public_listener(pub: EnvoyListenerConfig, ca_root: crypto.X509) -> None:
     print_fingerprints('Envoy public listener', pub.certificates)
     active_cert = find_matching_cert(pub.private_key, *pub.certificates)
     pub_msg = validate_cert(active_cert, *pub.ca_certificates)
@@ -112,7 +119,7 @@ def validate_pod_injected(pod: KubePod) -> bool:
     return color_assert(pod.is_injected, 'Pod is not injected', 'Pod was successfully injected')
 
 
-def validate_leaf_cn(pod: KubePod, cert: X509) -> bool:
+def validate_leaf_cn(pod: KubePod, cert: crypto.X509) -> bool:
     leaf_cn = get_subject_cn(cert)
     debug(f'Subject CN: {leaf_cn}')
     return color_assert(leaf_cn == pod.service_name,
@@ -120,7 +127,7 @@ def validate_leaf_cn(pod: KubePod, cert: X509) -> bool:
                         f"Certificate subject name of {leaf_cn} matches service name")
 
 
-def get_leaf_cert(agent_ip: str, service_name: str, namespace: str) -> Optional[Tuple[X509, PKey, dict]]:
+def get_leaf_cert(agent_ip: str, service_name: str, namespace: str) -> Optional[Tuple[crypto.X509, crypto.PKey, dict]]:
     agent_pod = find_agent_pod_by_ip(agent_ip, namespace=namespace)
     if not agent_pod:
         return None
@@ -131,7 +138,7 @@ def get_leaf_cert(agent_ip: str, service_name: str, namespace: str) -> Optional[
     return active_cert, leaf_key, leaf_json
 
 
-def validate_leaf_dates(cert: X509, api_result: dict) -> bool:
+def validate_leaf_dates(cert: crypto.X509, api_result: dict) -> bool:
     before, after = get_valid_times(cert)
     now = datetime.utcnow()
     return color_assert(before <= now, "Certificate is not yet valid") and \
@@ -142,13 +149,14 @@ def validate_leaf_dates(cert: X509, api_result: dict) -> bool:
                         "Certificate end date does not match API results")
 
 
-def validate_leaf_chain(cert: X509, ca_root: X509) -> bool:
+def validate_leaf_chain(cert: crypto.X509, ca_root: crypto.X509) -> bool:
     debug('Validating leaf certificate')
     msg = validate_cert(cert, ca_root)
     return color_assert(msg is None, f'Leaf cert validation failed: {msg}', 'Leaf cert validation succeeded')
 
 
-def validate_listener_chain(certs: List[X509], private_key: PKey, ca_roots: List[X509], leaf_cert: X509, ca_root: X509) -> bool:
+def validate_listener_chain(certs: List[crypto.X509], private_key: crypto.PKey, ca_roots: List[crypto.X509],
+                            leaf_cert: crypto.X509, ca_root: crypto.X509) -> bool:
     debug('Validating Envoy public listener certificate')
     print_fingerprints('Envoy public listener certificate', certs)
     active_cert = find_matching_cert(private_key, *certs)
@@ -161,7 +169,7 @@ def validate_listener_chain(certs: List[X509], private_key: PKey, ca_roots: List
                         'Envoy listener cert has different root from CA root')
 
 
-def validate_conn_chain(conn_cert: X509, leaf_cert: X509, ca_root: X509, address: str) -> bool:
+def validate_conn_chain(conn_cert: crypto.X509, leaf_cert: crypto.X509, ca_root: crypto.X509, address: str) -> bool:
     debug(f'Validating certificate returned from {address}')
     msg = validate_cert(conn_cert, ca_root)
     return color_assert(msg is None, f'Unable to validate cert from {address}: {msg}',
@@ -171,7 +179,7 @@ def validate_conn_chain(conn_cert: X509, leaf_cert: X509, ca_root: X509, address
                         f'Certificate served from {address} matches Consul leaf cert')
 
 
-def validate_conn(host: str, port: int, leaf_cert: X509, leaf_key: PKey, ca_root: X509,
+def validate_conn(host: str, port: int, leaf_cert: crypto.X509, leaf_key: crypto.PKey, ca_root: crypto.X509,
                   openssl: SSLProxyContainer) -> bool:
     openssl.update_certs(root_ca_cert=ca_root, client_cert=leaf_cert, client_key=leaf_key)
     conn_cert = openssl.connect(host, port)
@@ -180,7 +188,7 @@ def validate_conn(host: str, port: int, leaf_cert: X509, leaf_key: PKey, ca_root
 
 
 def validate_upstream_chain(upstream: EnvoyClusterConfig,
-                            leaf_cert: X509, root_ca: X509) -> bool:
+                            leaf_cert: crypto.X509, root_ca: crypto.X509) -> bool:
     debug(f'Validating upstream connection to {upstream.name}')
     print_fingerprints('Upstream client certificate', upstream.client_certs)
     active_cert = find_matching_cert(upstream.private_key, *upstream.client_certs)
@@ -203,7 +211,7 @@ def validate_downstream_config(downstream: EnvoyListenerConfig, upstream_name: s
 @main.command()
 @click.option('-namespace', default='default', help='Kubernetes namespace where we can find Consul.')
 @click.pass_context
-def validate(ctx: click.Context, namespace: str):
+def validate(ctx: click.Context, namespace: str) -> None:
     """Checks the certificates for every injected pod."""
     ctx.obj['namespace'] = namespace
     debug(f'Will use namespace "{namespace}" in Kubernetes')

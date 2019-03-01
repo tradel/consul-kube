@@ -1,10 +1,14 @@
-from typing import Dict
+from typing import Dict, List, Optional
+from datetime import datetime
+from io import StringIO
+
+from OpenSSL import crypto
 
 from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import DatumInContext
 
 from consul_kube.lib import JSONNode
-from consul_kube.lib.x509 import *
+from consul_kube.lib.x509 import load_certs, pkey_from_pem
 
 
 class EnvoyBaseConfig:
@@ -77,7 +81,7 @@ class EnvoyClusterConfig(EnvoyBaseConfig):
                               self._config) if self.type == 'service' else None
 
     @property
-    def client_certs(self) -> Optional[List[X509]]:
+    def client_certs(self) -> Optional[List[crypto.X509]]:
         return load_certs(StringIO(self.client_cert_pem)) if self.type == 'service' else None
 
     @property
@@ -87,7 +91,7 @@ class EnvoyClusterConfig(EnvoyBaseConfig):
                               self._config) if self.type == 'service' else None
 
     @property
-    def root_certs(self) -> Optional[List[X509]]:
+    def root_certs(self) -> Optional[List[crypto.X509]]:
         return load_certs(StringIO(self.root_ca_pem)) if self.type == 'service' else None
 
     @property
@@ -137,7 +141,7 @@ class EnvoyListenerConfig(EnvoyBaseConfig):
                               self._config)
 
     @property
-    def ca_certificates(self) -> List[X509]:
+    def ca_certificates(self) -> List[crypto.X509]:
         return load_certs(StringIO(self.root_ca_pem))
 
     @property
@@ -147,7 +151,7 @@ class EnvoyListenerConfig(EnvoyBaseConfig):
                               self._config)
 
     @property
-    def certificates(self) -> List[X509]:
+    def certificates(self) -> List[crypto.X509]:
         return load_certs(StringIO(self.certificate_pem))
 
     @property
