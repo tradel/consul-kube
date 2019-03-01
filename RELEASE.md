@@ -18,9 +18,18 @@ Manual Release Process
         
  4. Sign and upload to test warehouse with Twine:
  
-        $ twine upload -s -i <GPG_IDENTITY> -u <PYPI_USERNAME> --repository-url https://test.pypi.org/legacy/ dist/* 
-
+        $ twine upload -u $PYPI_USERNAME --repository-url https://test.pypi.org/legacy/ \
+              dist/consul-kube-$(python setup.py --version).tar.gz \
+              dist/consul_kube-$(python setup.py --version)-*.whl
+ 
  5. Push changes to Github, including the semver tag:
  
         $ git push --tags
-``
+
+ 6. Test.
+ 
+ 7. Update to the real PyPI index:
+  
+        $ twine upload -u $PYPI_USERNAME --repository-url https://pypi.org/legacy/ \
+              dist/consul-kube-$(python setup.py --version).tar.gz \
+              dist/consul_kube-$(python setup.py --version)-*.whl
