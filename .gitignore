@@ -6,6 +6,10 @@
 *.json
 ssl.conf
 
+# Kubernetes binaries
+kubectl
+minikube
+
 .idea/
 _attic/
 **/__pycache__/
