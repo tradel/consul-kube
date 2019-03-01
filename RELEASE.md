@@ -19,7 +19,7 @@ Manual Release Process
  4. Sign and upload to test warehouse with Twine:
  
         $ twine upload -u $PYPI_USERNAME --repository-url https://test.pypi.org/legacy/ \
-              dist/consul-kube-$(python setup.py --version).tar.gz \
+              dist/consul_kube-$(python setup.py --version).tar.gz \
               dist/consul_kube-$(python setup.py --version)-*.whl
  
  5. Test.
@@ -31,5 +31,5 @@ Manual Release Process
  7. Update to the real PyPI index:
   
         $ twine upload -u $PYPI_USERNAME --repository-url https://pypi.org/legacy/ \
-              dist/consul-kube-$(python setup.py --version).tar.gz \
+              dist/consul_kube-$(python setup.py --version).tar.gz \
               dist/consul_kube-$(python setup.py --version)-*.whl
