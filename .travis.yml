@@ -13,6 +13,8 @@ sudo: false
 services:
   - docker
 
+if: tag IS present
+
 install:
   - pip install -e .
   - pip install flake8 pylint setuptools_scm
