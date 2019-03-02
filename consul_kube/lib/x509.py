@@ -47,7 +47,7 @@ def load_certs(stream: StringIO) -> List[crypto.X509]:
             pem_text += line
 
     if len(certs) == 0:
-        raise RuntimeError('No PEM certificates found in stream')
+        raise RuntimeError(f'No PEM certificates found in stream:\n{stream.getvalue()}')
     return certs
 
 
