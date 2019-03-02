@@ -1,0 +1,59 @@
+export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
+
+JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'
+
+wait_for_pod()
+{
+    desc="$1"
+    namespace="$2"
+    selector="$3"
+
+    until kubectl -n ${namespace} get pods -l ${selector} -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
+        sleep 1
+        echo "waiting for ${desc} to be available"
+        kubectl get pods
+    done
+
+    # echo "${desc} is ready"
+}
+
+wait_for_service()
+{
+    desc="$1"
+    namespace="$2"
+    selector="$3"
+
+    until kubectl -n ${namespace} get services -l ${selector} -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
+        sleep 1
+        echo "waiting for ${desc} to be available"
+        # kubectl get services
+    done
+
+    # echo "${desc} is ready"
+}
+
+wait_for_deployment()
+{
+    desc="$1"
+    namespace="$2"
+    selector="$3"
+
+    until kubectl -n ${namespace} get deployments -l ${selector} -o jsonpath="$JSONPATH" 2>&1 | grep -q "Available=True"; do
+        sleep 1
+        echo "waiting for ${desc} to be available"
+        kubectl -n ${namespace} get deployments
+    done
+
+    # echo "${desc} is ready"
+}
+
+wait_for_nodes()
+{
+    until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
+        sleep 1
+        echo "waiting for cluster nodes to come online"
+        kubectl get nodes
+    done
+
+    # echo "nodes are ready"
+}

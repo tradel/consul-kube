@@ -1,0 +1,30 @@
+
+global:
+  enabled: true
+  domain: consul
+  image: "consul:1.4.2"
+  datacenter: dc1
+
+server:
+  enabled: true
+  replicas: 1
+  bootstrapExpect: 1
+  storage: 8Gi
+  connect: true
+
+client:
+  enabled: true
+  grpc: true
+
+dns:
+  enabled: true
+
+ui:
+  enabled: true
+  service:
+    enabled: true
+    type: NodePort
+
+connectInject:
+  enabled: true
+  default: false 

@@ -1,0 +1,45 @@
+language: python
+dist: xenial
+
+cache:
+  directories:
+    - "$HOME/google-cloud-sdk/"
+
+python:
+  - '3.4'
+  - '3.5'
+  - '3.6'
+
+sudo: false
+
+services:
+  - docker
+
+install:
+  - pip install -e .
+
+before_script:
+  # Use DIND to start a Kube cluster
+  - scripts/dind-up.sh
+  # Load Helm and Tiller
+  - scripts/helm.sh
+  # Deploy Consul server and clients via Helm chart
+  - scripts/consul.sh
+  # Deploy simple HTTP services for injection test
+  - scripts/simple.sh
+
+script:
+  - flake8 --exclude=_attic/,dist/,build/ --max-line-length=120 --extend-ignore=E127 --exit-zero main.py consul_kube
+  - pylint --max-line-length=120 --exit-zero main.py consul_kube
+  - consul-kube validate
+
+deploy:
+  - provider: pypi
+    user: tradel
+    password:
+      secure: gu4I0r5litzJvKNpXR9iyik3SKGfGiBBIfJJNffji6OV7v45EzqsdHBULHJIhsNLBKdu9KENuMveKmjHyYkl46UEw1Ky6gN/Xlx80hDKkIk49Shw2TRzJSOmGk6drW1fvGXE00Meb/ZQQiOMOHgS5wimTwUD6P0WQ2Gqvalid7ByrOC1EFQL5kp1OXyI1nWc6RlRcxxRiKgTQXEZbXBqEDm7AE2YhB1Q6CBZQAy2Ta7e7UJKyheXUElebwcmlIQAghR8gMO89uV3EZ1Vp8SiF4C/jIygeQjoIDpCSig6kls+h9Ygn01CnXFeisEegWm0w6lzn/4VzLBCt9Co/Dn5fTXqhUvFkET9osiIS65p3VmB4lySl24s9geQb8zB9+Gv6DoOXXYWkiulFgjihVPmwrlHX023XmObF+iJvPg1ODoun9AzEvMlbrx7OoPMglK/7E36sf7PXUardI/vCjFDgoi6ammaaDIb0sHthBjMH8GXjfRNZPdpe8oQ0v4B+MaQ0ZxrcZprt5C5kxmVYAj6EmSeFXBmRDvWCvt2I0pNCGZzf73vc/zyc0PbkaT61QjKvYGSbJ48cQFp1g1/Bp5aJehrqJfBhNdu14jZiIzGwg/BX1gEYbzYCpMua8scVaoZplApCHpHESR2MQzz45hfgox3uxiU4bXJj4p7vnBJEqM=
+    on:
+      tags: true
+      branch: master
+    server: https://test.pypi.org/legacy/
+

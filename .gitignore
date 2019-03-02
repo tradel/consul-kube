@@ -9,6 +9,7 @@ ssl.conf
 # Kubernetes binaries
 kubectl
 minikube
+dind-cluster-*.sh
 
 .idea/
 _attic/
