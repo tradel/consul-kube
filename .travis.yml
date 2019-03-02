@@ -30,8 +30,11 @@ before_script:
   - scripts/simple.sh
 
 script:
-  - flake8 --exclude=_attic/,dist/,build/ --max-line-length=120 --extend-ignore=E127 --exit-zero main.py consul_kube
-  - pylint --max-line-length=120 --exit-zero main.py consul_kube
+  - flake8 --max-line-length=120 --extend-ignore=E127 --exit-zero main.py consul_kube
+  - pylint --disable=C0111,W0120,R1705 --max-line-length=120 --exit-zero main.py consul_kube
+  # Basic test: validate certs, rotate the root, validate again
+  - consul-kube validate
+  - consul-kube rotate
   - consul-kube validate
 
 deploy:
@@ -43,4 +46,3 @@ deploy:
       tags: true
       branch: master
     server: https://test.pypi.org/legacy/
-

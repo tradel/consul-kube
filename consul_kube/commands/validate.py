@@ -34,8 +34,8 @@ def validate_ca_root(cert: crypto.X509) -> bool:
 
 def get_ca_root(namespace: str) -> Tuple[crypto.X509, str]:
     debug('Getting CA root certificate from Consul server')
-    cc = ConsulApiClient(namespace=namespace)
-    ca_root_cert, api_result = cc.active_ca_root_cert
+    api_client = ConsulApiClient(namespace=namespace)
+    ca_root_cert, api_result = api_client.active_ca_root_cert
     save_cert("ca_root.pem", [ca_root_cert])
     return ca_root_cert, api_result['TrustDomain']
 
@@ -52,8 +52,8 @@ def get_injector_default(namespace: str) -> str:
     command = ' '.join(match[0].value)
 
     default = 'true'
-    r = re.compile(r'-default-inject=(\w+)')
-    matches = r.search(command)
+    regex = re.compile(r'-default-inject=(\w+)')
+    matches = regex.search(command)
     if matches:
         default = matches.group(1)
 
@@ -62,7 +62,7 @@ def get_injector_default(namespace: str) -> str:
 
 
 def print_fingerprints(name: str, certs: List[crypto.X509]) -> None:
-    if len(certs) == 0:
+    if len(certs) == 0:  # pylint: disable=C1801
         debug(f'{name} has no certificates')
     elif len(certs) == 1:
         debug(f'{name} has fingerprint {cert_digest(certs[0])}')
@@ -75,9 +75,8 @@ def print_fingerprints(name: str, certs: List[crypto.X509]) -> None:
 def find_matching_cert(key: crypto.PKey, *args: crypto.X509) -> Optional[crypto.X509]:
     for cert in args:
         data = 'Jeremiah was a bullfrog'
-        foo = crypto.sign(key, data, 'sha256')
-        bar = crypto.verify(cert, foo, data, 'sha256')
-        if bar is None:
+        signed = crypto.sign(key, data, 'sha256')
+        if not crypto.verify(cert, signed, data, 'sha256'):
             debug(f'Certificate matching private key has fingerprint: {cert_digest(cert)}')
             return cert
     else:
@@ -142,9 +141,9 @@ def validate_leaf_dates(cert: crypto.X509, api_result: dict) -> bool:
     now = datetime.utcnow()
     return color_assert(before <= now, "Certificate is not yet valid") and \
            color_assert(now <= after, "Certificate has expired", "Certificate has not expired") and \
-           color_assert(before == ConsulApiClient.convert_dt(api_result['ValidAfter']),
+           color_assert(before == ConsulApiClient.convert_api_date(api_result['ValidAfter']),
                         "Certificate start date does not match API results") and \
-           color_assert(after == ConsulApiClient.convert_dt(api_result['ValidBefore']),
+           color_assert(after == ConsulApiClient.convert_api_date(api_result['ValidBefore']),
                         "Certificate end date does not match API results")
 
 

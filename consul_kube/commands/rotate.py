@@ -41,10 +41,11 @@ def generate_ca_root(serial_number: int, trust_domain: str, public_key: crypto.P
     return cert
 
 
-def rotate_command(ctx: click.Context) -> None:
+# noinspection PyUnusedLocal
+def rotate_command(ctx: click.Context) -> None:  # pylint: disable=W0613
     debug('Looking up existing CA serial number')
-    cc = ConsulApiClient()
-    root_cert, api_response = cc.active_ca_root_cert
+    consul_api = ConsulApiClient()
+    root_cert, api_response = consul_api.active_ca_root_cert
 
     trust_domain = api_response['TrustDomain']
     old_serial = root_cert.get_serial_number()
@@ -56,12 +57,12 @@ def rotate_command(ctx: click.Context) -> None:
     save_key('new_root.key', key)
 
     debug('Sending new CA cert to Consul')
-    result_body, response_code, http_headers = cc.update_config(key, cert)
+    result_body, response_code, _ = consul_api.update_config(key, cert)
     color_assert(response_code == 200, f'Unexpected HTTP return code from server: {response_code}({result_body})',
                  'Consul responded with 200 OK')
 
     debug('Confirming new CA cert with Consul')
-    new_root, new_response = cc.active_ca_root_cert
+    new_root, _ = consul_api.active_ca_root_cert
     color_assert(compare_certs(new_root, cert),
                  'Cert returned by Consul does not match what we just uploaded',
                  'Cert returned by Consul matches our new cert')

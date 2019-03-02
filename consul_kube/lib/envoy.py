@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional
 from datetime import datetime
 from io import StringIO
+from abc import ABC
 
 from OpenSSL import crypto
 
@@ -11,7 +12,7 @@ from consul_kube.lib import JSONNode
 from consul_kube.lib.x509 import load_certs, pkey_from_pem
 
 
-class EnvoyBaseConfig:
+class EnvoyBaseConfig(ABC):
     ENVOY_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 
     def __init__(self, json_obj: dict) -> None:
@@ -23,22 +24,19 @@ class EnvoyBaseConfig:
 
     def _find_one(self, pattern: str, root_obj: JSONNode = None) -> JSONNode:
         results = self._find(pattern, root_obj)
-        if len(results) == 0:
+        if len(results) == 0:  # pylint: disable=C1801,R1720
             raise RuntimeError(f'JSONPath pattern not found: {pattern}')
         elif len(results) > 1:
             raise RuntimeError(f'Found multiple matches when expecting only one: {pattern}')
         else:
             return results[0].value
 
-    # noinspection PyMethodMayBeStatic
-    def _convert_date(self, dt: str) -> datetime:
-        return datetime.strptime(dt.replace('Z', '000Z'), self.ENVOY_DATETIME_FORMAT)
+    @staticmethod
+    def convert_date(envoy_date_str: str) -> datetime:
+        return datetime.strptime(envoy_date_str.replace('Z', '000Z'), EnvoyBaseConfig.ENVOY_DATETIME_FORMAT)
 
 
 class EnvoyClusterConfig(EnvoyBaseConfig):
-
-    def __init__(self, json_obj: dict) -> None:
-        super().__init__(json_obj)
 
     @property
     def name(self) -> str:
@@ -96,7 +94,7 @@ class EnvoyClusterConfig(EnvoyBaseConfig):
 
     @property
     def last_update(self):
-        return self._convert_date(self._config['last_updated'])
+        return EnvoyBaseConfig.convert_date(self._config['last_updated'])
 
     @property
     def age(self):
@@ -104,9 +102,6 @@ class EnvoyClusterConfig(EnvoyBaseConfig):
 
 
 class EnvoyListenerConfig(EnvoyBaseConfig):
-
-    def __init__(self, json_obj: dict) -> None:
-        super().__init__(json_obj)
 
     @property
     def name(self) -> str:
@@ -156,7 +151,7 @@ class EnvoyListenerConfig(EnvoyBaseConfig):
 
     @property
     def last_update(self):
-        return self._convert_date(self._config['last_updated'])
+        return EnvoyBaseConfig.convert_date(self._config['last_updated'])
 
     @property
     def age(self):
@@ -181,15 +176,16 @@ class EnvoyConfig(EnvoyBaseConfig):
     def clusters(self) -> dict:
         if not self._clusters:
             self._clusters = self._find_one(f"$.configs[?(@.'@type' == '{self.GRPC_CLUSTERS_TYPE}')]")
-            for dyn in self._clusters['static_clusters']:  # type: dict
-                dyn.update(self._parse_cluster_name(dyn['cluster']['name']))
-            for dyn in self._clusters['dynamic_active_clusters']:  # type: dict
-                dyn.update(self._parse_cluster_name(dyn['cluster']['name']))
+            dyn: dict
+            for dyn in self._clusters['static_clusters']:
+                dyn.update(EnvoyConfig._parse_cluster_name(dyn['cluster']['name']))
+            for dyn in self._clusters['dynamic_active_clusters']:
+                dyn.update(EnvoyConfig._parse_cluster_name(dyn['cluster']['name']))
 
         return self._clusters
 
-    # noinspection PyMethodMayBeStatic
-    def _parse_cluster_name(self, name: str) -> Dict[str, str]:
+    @staticmethod
+    def _parse_cluster_name(name: str) -> Dict[str, str]:
         tokens = name.split(':')
         return {'_type': tokens.pop(0), '_target': ':'.join(tokens)}
 
@@ -197,13 +193,14 @@ class EnvoyConfig(EnvoyBaseConfig):
     def listeners(self) -> dict:
         if not self._listeners:
             self._listeners = self._find_one(f"$.configs[?(@.'@type' == '{self.GRPC_LISTENERS_TYPE}')]")
-            for dyn in self._listeners['dynamic_active_listeners']:  # type: dict
-                dyn.update(self._parse_listener_name(dyn['listener']['name']))
+            dyn: dict
+            for dyn in self._listeners['dynamic_active_listeners']:
+                dyn.update(EnvoyConfig._parse_listener_name(dyn['listener']['name']))
 
         return self._listeners
 
-    # noinspection PyMethodMayBeStatic
-    def _parse_listener_name(self, name: str) -> Dict[str, str]:
+    @staticmethod
+    def _parse_listener_name(name: str) -> Dict[str, str]:
         tokens = name.split(':')
         return {'_port': int(tokens.pop()), '_ip': tokens.pop(), '_type': tokens.pop(0), '_target': ':'.join(tokens)}
 

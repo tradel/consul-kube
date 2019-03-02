@@ -97,8 +97,8 @@ class ConsulApiClient:
         return self.put('/v1/connect/ca/configuration', payload)
 
     @staticmethod
-    def convert_dt(dt: str) -> datetime:
-        return datetime.strptime(dt, ConsulApiClient.CONSUL_DATETIME_FORMAT)
+    def convert_api_date(api_date_str: str) -> datetime:
+        return datetime.strptime(api_date_str, ConsulApiClient.CONSUL_DATETIME_FORMAT)
 
 
 # noinspection PyUnresolvedReferences
@@ -204,35 +204,35 @@ class KubePod(KubeThing):
     def envoy_config(self, container_name: str = 'consul-connect-envoy-sidecar',
                      envoy_port: int = 19000) -> Optional[JSONNode]:
         try:
-            ws = stream(kube.connect_get_namespaced_pod_exec_with_http_info,
-                        self.name, self.namespace, container=container_name,
-                        tty=False, stdout=True, stderr=True,
-                        command=['wget', '-q', '-O', '-', f'localhost:{envoy_port}/config_dump'],
-                        _preload_content=False, _return_http_data_only=True)  # type: WSClient
-            ws.run_forever()
-            config_txt = ws.read_all()
+            ws_client: WSClient = stream(kube.connect_get_namespaced_pod_exec_with_http_info,
+                                         self.name, self.namespace, container=container_name,
+                                         tty=False, stdout=True, stderr=True,
+                                         command=['wget', '-q', '-O', '-', f'localhost:{envoy_port}/config_dump'],
+                                         _preload_content=False, _return_http_data_only=True)
+            ws_client.run_forever()
+            config_txt = ws_client.read_all()
             return json.loads(config_txt)
         except ApiException:
             return None
 
     def send_files(self, files: TarInMemory, dest_dir: str = '/tmp', container_name: str = None):
-        s = stream(kube.connect_get_namespaced_pod_exec,
-                   self.name, self.namespace, container=container_name,
-                   tty=False, stdin=True, stdout=True, stderr=True, _preload_content=False,
-                   command=['/bin/tar', 'xf', '-', '-C', dest_dir])  # type: WSClient
-        s.write_stdin(files.close().decode('utf-8'))
-        s.update()
-        if s.peek_stderr():
-            raise RuntimeError(s.read_stderr())
-        s.close()
+        ws_client: WSClient = stream(kube.connect_get_namespaced_pod_exec,
+                                     self.name, self.namespace, container=container_name,
+                                     tty=False, stdin=True, stdout=True, stderr=True, _preload_content=False,
+                                     command=['/bin/tar', 'xf', '-', '-C', dest_dir])
+        ws_client.write_stdin(files.close().decode('utf-8'))
+        ws_client.update()
+        if ws_client.peek_stderr():
+            raise RuntimeError(ws_client.read_stderr())
+        ws_client.close()
 
     @staticmethod
     def list_all() -> List['KubePod']:
         return [KubePod(x) for x in kube.list_pod_for_all_namespaces()]
 
     @staticmethod
-    def list_namespace(ns: str = KubeThing.DEFAULT_NAMESPACE) -> List['KubePod']:
-        return [KubePod(x) for x in kube.list_namespaced_pod(ns)]
+    def list_namespace(namespace: str = KubeThing.DEFAULT_NAMESPACE) -> List['KubePod']:
+        return [KubePod(x) for x in kube.list_namespaced_pod(namespace)]
 
     @staticmethod
     def select(selector: str, namespace: str = KubeThing.DEFAULT_NAMESPACE) -> List['KubePod']:
@@ -339,9 +339,9 @@ class SSLProxyContainer:
             raise
 
     def is_ready(self) -> bool:
-        me = self.get()
-        debug(f'Available replicas = {me.status.available_replicas}')
-        return me.status.available_replicas is not None and me.status.available_replicas >= 1
+        my_deploy = self.get()
+        debug(f'Available replicas = {my_deploy.status.available_replicas}')
+        return my_deploy.status.available_replicas is not None and my_deploy.status.available_replicas >= 1
 
     def wait_for_ready(self) -> None:
         debug('Waiting for OpenSSL proxy container to become ready')
