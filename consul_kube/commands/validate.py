@@ -6,7 +6,7 @@ import click
 from OpenSSL import crypto
 from jsonpath_ng.ext import parse
 
-from consul_kube.lib.color import debug, error, color_assert, section, groovy
+from consul_kube.lib.color import debug, info, error, color_assert, section, groovy
 from consul_kube.lib.envoy import EnvoyListenerConfig, EnvoyClusterConfig, EnvoyConfig
 from consul_kube.lib.kube import ConsulApiClient, KubePod, SSLProxyContainer
 from consul_kube.lib.x509 import validate_cert, save_cert, save_key, cert_digest, get_subject_alt_name, \
@@ -218,6 +218,7 @@ def validate_command(ctx: click.Context) -> None:
     root_cert, trust_domain = get_ca_root(namespace)
     validate_ca_root(root_cert)
     validate_spiffe(root_cert, trust_domain)
+    info(f'Consul CA root certificate serial number is {root_cert.get_serial_number()}')
 
     default_inject = get_injector_default(namespace)
 

@@ -65,3 +65,5 @@ def rotate_command(ctx: click.Context) -> None:
     color_assert(compare_certs(new_root, cert),
                  'Cert returned by Consul does not match what we just uploaded',
                  'Cert returned by Consul matches our new cert')
+
+    info(f'New root CA with serial {new_root.get_serial_number()} is now live')
