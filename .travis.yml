@@ -6,8 +6,6 @@ cache:
     - "$HOME/google-cloud-sdk/"
 
 python:
-  - '3.4'
-  - '3.5'
   - '3.6'
 
 sudo: false
@@ -17,6 +15,7 @@ services:
 
 install:
   - pip install -e .
+  - pip install flake8 pylint setuptools_scm
 
 before_script:
   # Use DIND to start a Kube cluster
