@@ -11,10 +11,10 @@ wait_for_pod()
     until kubectl -n ${namespace} get pods -l ${selector} -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
         sleep 1
         echo "waiting for ${desc} to be available"
-        kubectl get pods
+        # kubectl get pods
     done
 
-    # echo "${desc} is ready"
+    echo "${desc} is ready"
 }
 
 wait_for_service()
@@ -29,7 +29,7 @@ wait_for_service()
         # kubectl get services
     done
 
-    # echo "${desc} is ready"
+    echo "${desc} is ready"
 }
 
 wait_for_deployment()
@@ -41,10 +41,10 @@ wait_for_deployment()
     until kubectl -n ${namespace} get deployments -l ${selector} -o jsonpath="$JSONPATH" 2>&1 | grep -q "Available=True"; do
         sleep 1
         echo "waiting for ${desc} to be available"
-        kubectl -n ${namespace} get deployments
+        # kubectl -n ${namespace} get deployments
     done
 
-    # echo "${desc} is ready"
+    echo "${desc} is ready"
 }
 
 wait_for_nodes()
@@ -52,8 +52,8 @@ wait_for_nodes()
     until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
         sleep 1
         echo "waiting for cluster nodes to come online"
-        kubectl get nodes
+        # kubectl get nodes
     done
 
-    # echo "nodes are ready"
+    echo "nodes are ready"
 }
