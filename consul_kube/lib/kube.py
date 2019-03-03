@@ -235,12 +235,12 @@ class KubePod(KubeThing):
         return [KubePod(x) for x in kube.list_namespaced_pod(namespace)]
 
     @staticmethod
-    def select(selector: str, namespace: str = KubeThing.DEFAULT_NAMESPACE) -> List['KubePod']:
-        return [KubePod(x) for x in kube.list_namespaced_pod(namespace, label_selector=selector).items]
+    def select(selector: str, namespace: str = KubeThing.DEFAULT_NAMESPACE, **kwargs) -> List['KubePod']:
+        return [KubePod(x) for x in kube.list_namespaced_pod(namespace, label_selector=selector, **kwargs).items]
 
     @staticmethod
-    def select_one(selector: str, namespace: str = KubeThing.DEFAULT_NAMESPACE) -> 'KubePod':
-        results = KubePod.select(selector, namespace)
+    def select_one(selector: str, namespace: str = KubeThing.DEFAULT_NAMESPACE, **kwargs) -> 'KubePod':
+        results = KubePod.select(selector, namespace, **kwargs)
         assert len(results) == 1
         return results[0]
 
@@ -351,7 +351,7 @@ class SSLProxyContainer:
 
     @property
     def pod(self) -> KubePod:
-        return KubePod.select_one("app=openssl")
+        return KubePod.select_one('app=openssl', field_selector='status.phase==Running')
 
     def connect(self, host: str, port: int) -> crypto.X509:
         debug(f'Using OpenSSL proxy container to connect to {host}:{port}')
