@@ -25,6 +25,10 @@ kube = client.CoreV1Api()
 kube_beta = client.ExtensionsV1beta1Api()
 
 
+def init_kube_api(context_name: str = None) -> None:
+    config.load_kube_config(context=context_name)
+
+
 class ConsulApiClient:
     CONSUL_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 

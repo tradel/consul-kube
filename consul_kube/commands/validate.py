@@ -216,7 +216,6 @@ def validate_command(ctx: click.Context) -> None:
     namespace = ctx.obj['namespace']
     clean_openssl = ctx.obj['clean_openssl']
     skip_openssl = ctx.obj['skip_openssl']
-    debug(f'Will use namespace "{namespace}" in Kubernetes')
 
     openssl = None
     if not skip_openssl:

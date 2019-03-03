@@ -2,6 +2,7 @@ import click
 
 from consul_kube import __version__
 from consul_kube.lib import color
+from consul_kube.lib.kube import init_kube_api
 from consul_kube.commands.rotate import rotate_command
 from consul_kube.commands.validate import validate_command
 
@@ -11,7 +12,7 @@ from consul_kube.commands.validate import validate_command
               help='Enables or disables verbose output.')
 @click.option('-save-certs/-no-save-certs', default=False,
               help='Save a copy of any retrieved certs.')
-@click.option('-context', 'context_name',
+@click.option('-context', 'context_name', default=None,
               help='Choose a context from your kubeconfig.')
 @click.option('-namespace', default='default',
               help='Kubernetes namespace where we can find Consul.')
@@ -26,6 +27,10 @@ def main(ctx: click.Context, debug: bool, save_certs: bool, context_name: str, n
     ctx.obj['namespace'] = namespace
     color.debug_mode = debug
     color.write_certs = save_certs
+    init_kube_api(context_name)
+
+    color.debug(f'Using Kubernetes context:   {context_name or "current"}')
+    color.debug(f'Using Kubernetes namespace: {namespace}')
 
 
 @main.command()
