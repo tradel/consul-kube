@@ -33,9 +33,9 @@ script:
   - flake8 --max-line-length=120 --extend-ignore=E127 --exit-zero main.py consul_kube
   - pylint --disable=C0111,W0120,R1705 --max-line-length=120 --exit-zero main.py consul_kube
   # Basic test: validate certs, rotate the root, validate again
-  - consul-kube validate
+  - consul-kube -skip-openssl validate
   - consul-kube rotate
-  - consul-kube validate
+  - consul-kube -skip-openssl validate
 
 deploy:
   - provider: pypi
