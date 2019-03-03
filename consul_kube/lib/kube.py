@@ -358,6 +358,7 @@ class SSLProxyContainer:
         command = ['openssl', 's_client',
                    '-prexit',
                    '-no_tls1_2',
+                   '-cipher', 'ECDHE-ECDSA-AES128-SHA',
                    '-cert', '/tmp/client.pem',
                    '-key', '/tmp/client.key',
                    '-CAfile', '/tmp/root_ca.pem',
