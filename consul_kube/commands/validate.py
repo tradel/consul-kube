@@ -223,6 +223,7 @@ def validate_command(ctx: click.Context) -> None:
     validate_ca_root(root_cert)
     validate_spiffe(root_cert, trust_domain)
     info(f'Consul CA root certificate serial number is {root_cert.get_serial_number()}')
+    info(f'Consul CA root certificate fingerprint is {cert_digest(root_cert)}')
 
     default_inject = get_injector_default(namespace)
 
