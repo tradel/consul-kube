@@ -31,11 +31,14 @@ def main(ctx: click.Context, debug: bool, save_certs: bool, context_name: str, n
 @main.command()
 @click.option('-clean/-no-clean', default=True,
               help='Leave the OpenSSL pod running after exit.')
+@click.option('-skip-openssl/-no-skip-openssl', default=False,
+              help='Skip the (unreliable) OpenSSL connection tests.')
 @click.help_option('-help')
 @click.pass_context
-def validate(ctx: click.Context, clean: bool) -> None:
+def validate(ctx: click.Context, clean: bool, skip_openssl: bool) -> None:
     """Checks the certificates for every injected pod."""
     ctx.obj['clean_openssl'] = clean
+    ctx.obj['skip_openssl'] = skip_openssl
     validate_command(ctx)
 
 

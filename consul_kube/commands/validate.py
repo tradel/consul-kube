@@ -215,9 +215,12 @@ def validate_downstream_config(downstream: EnvoyListenerConfig, upstream_name: s
 def validate_command(ctx: click.Context) -> None:
     namespace = ctx.obj['namespace']
     clean_openssl = ctx.obj['clean_openssl']
+    skip_openssl = ctx.obj['skip_openssl']
     debug(f'Will use namespace "{namespace}" in Kubernetes')
 
-    openssl = SSLProxyContainer(namespace=namespace)
+    openssl = None
+    if not skip_openssl:
+        openssl = SSLProxyContainer(namespace=namespace)
 
     root_cert, trust_domain = get_ca_root(namespace)
     validate_ca_root(root_cert)
@@ -253,13 +256,16 @@ def validate_command(ctx: click.Context) -> None:
 
         pub = envoy_config.public_listener
         validate_listener_chain(pub.certificates, pub.private_key, pub.ca_certificates, leaf_cert, root_cert)
-        validate_conn(pub.bind_address, pub.bind_port, leaf_cert, leaf_key, root_cert, openssl)
+        if not skip_openssl:
+            validate_conn(pub.bind_address, pub.bind_port, leaf_cert, leaf_key, root_cert, openssl)
 
         for upstream_name, upstream_port in pod.upstreams:
             validate_upstream_chain(envoy_config.upstream(upstream_name), leaf_cert, root_cert)
             validate_downstream_config(envoy_config.downstream(upstream_name), upstream_name, upstream_port)
 
-    if clean_openssl:
+    if skip_openssl:
+        pass
+    elif clean_openssl:
         openssl.delete()
     else:
         info('Leaving OpenSSL pod running')
