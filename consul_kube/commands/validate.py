@@ -180,6 +180,7 @@ def validate_conn_chain(conn_cert: crypto.X509, leaf_cert: crypto.X509, ca_root:
 def validate_conn(host: str, port: int, leaf_cert: crypto.X509, leaf_key: crypto.PKey, ca_root: crypto.X509,
                   openssl: SSLProxyContainer) -> bool:
     openssl.update_certs(root_ca_cert=ca_root, client_cert=leaf_cert, client_key=leaf_key)
+
     conn_cert = openssl.connect(host, port)
     debug(f'Certificate served by Envoy has fingerprint {cert_digest(conn_cert)}')
     return validate_conn_chain(conn_cert, leaf_cert, ca_root, f'{host}:{port}')
@@ -210,6 +211,7 @@ def validate_downstream_config(downstream: EnvoyListenerConfig, upstream_name: s
 
 def validate_command(ctx: click.Context) -> None:
     namespace = ctx.obj['namespace']
+    clean_openssl = ctx.obj['clean_openssl']
     debug(f'Will use namespace "{namespace}" in Kubernetes')
 
     openssl = SSLProxyContainer(namespace=namespace)
@@ -253,7 +255,10 @@ def validate_command(ctx: click.Context) -> None:
             validate_upstream_chain(envoy_config.upstream(upstream_name), leaf_cert, root_cert)
             validate_downstream_config(envoy_config.downstream(upstream_name), upstream_name, upstream_port)
 
-    openssl.delete()
+    if clean_openssl:
+        openssl.delete()
+    else:
+        info('Leaving OpenSSL pod running')
 
     section('Compiling results...')
     color_assert(groovy, 'One or more errors were found.', 'Everything is groovy!')

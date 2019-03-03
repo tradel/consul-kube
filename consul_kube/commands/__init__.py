@@ -29,10 +29,13 @@ def main(ctx: click.Context, debug: bool, save_certs: bool, context_name: str, n
 
 
 @main.command()
+@click.option('-clean/-no-clean', default=True,
+              help='Leave the OpenSSL pod running after exit.')
 @click.help_option('-help')
 @click.pass_context
-def validate(ctx: click.Context) -> None:
+def validate(ctx: click.Context, clean: bool) -> None:
     """Checks the certificates for every injected pod."""
+    ctx.obj['clean_openssl'] = clean
     validate_command(ctx)
 
 
