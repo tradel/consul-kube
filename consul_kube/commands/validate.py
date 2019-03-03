@@ -182,6 +182,9 @@ def validate_conn(host: str, port: int, leaf_cert: crypto.X509, leaf_key: crypto
     openssl.update_certs(root_ca_cert=ca_root, client_cert=leaf_cert, client_key=leaf_key)
 
     conn_cert = openssl.connect(host, port)
+    if not conn_cert:
+        return False
+
     debug(f'Certificate served by Envoy has fingerprint {cert_digest(conn_cert)}')
     return validate_conn_chain(conn_cert, leaf_cert, ca_root, f'{host}:{port}')
 

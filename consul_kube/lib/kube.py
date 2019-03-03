@@ -15,7 +15,7 @@ from kubernetes.stream.ws_client import WSClient
 from urllib3.response import HTTPResponse
 
 from consul_kube.lib import JSONNode
-from consul_kube.lib.color import debug, error
+from consul_kube.lib.color import debug, error, color_assert
 from consul_kube.lib.tar import TarInMemory
 from consul_kube.lib.x509 import load_certs, cert_from_pem, cert_to_pem, pkey_from_pem, pkey_to_pem, \
     extract_cert, cert_digest
@@ -353,11 +353,11 @@ class SSLProxyContainer:
     def pod(self) -> KubePod:
         return KubePod.select_one('app=openssl', field_selector='status.phase==Running')
 
-    def connect(self, host: str, port: int) -> crypto.X509:
+    def connect(self, host: str, port: int) -> Optional[crypto.X509]:
         debug(f'Using OpenSSL proxy container to connect to {host}:{port}')
         command = ['openssl', 's_client',
-                   '-tls1_2',
-                   '-timeout',
+                   '-prexit',
+                   '-no_tls1_2',
                    '-cert', '/tmp/client.pem',
                    '-key', '/tmp/client.key',
                    '-CAfile', '/tmp/root_ca.pem',
@@ -368,8 +368,14 @@ class SSLProxyContainer:
                              tty=False, stdout=True, stderr=True,
                              command=command)
 
+        debug(f'Output from OpenSSL command: \n{command_out}')
+
+        if 'command terminated with exit code 1' in command_out or ':error:' in command_out:
+            error(f'OpenSSL command failed with output:\n{command_out}')
+            return None
+
         certs = extract_cert(command_out)
-        assert len(certs) == 1
+        color_assert(len(certs) > 0, 'Did not receive a certificate in the server response')
         return certs[0]
 
     def update_certs(self, root_ca_cert: crypto.X509 = None,
