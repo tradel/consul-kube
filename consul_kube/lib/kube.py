@@ -301,7 +301,7 @@ class SSLProxyContainer:
             error(f'Error updating OpenSSL proxy: {body["message"]}')
             raise
 
-    def delete(self):
+    def delete(self) -> None:
         debug('Deleting OpenSSL proxy deployment')
         delete_opts = V1DeleteOptions(api_version="extensions/v1beta1",
                                       grace_period_seconds=0)
